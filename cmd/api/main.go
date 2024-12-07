@@ -1,35 +1,33 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/joho/godotenv"
 	"github.com/maxwelbm/pod_example/internal/controller"
 	"github.com/maxwelbm/pod_example/internal/repository"
-	"github.com/maxwelbm/pod_example/internal/service/model"
-	"golang.org/x/text/cmd/gotext/examples/extract_http/pkg"
+	"github.com/maxwelbm/pod_example/internal/routes"
+	"github.com/maxwelbm/pod_example/internal/service"
 )
 
 func main() {
-	ok, err := pkg.Connection("", "", "", "", "")
+	err := godotenv.Load()
 	if err != nil {
-		panic(err)
+		log.Println("No .env file found, loading system environment variables")
+		return
 	}
 
-	db := repository.NewMeliDB(ok)
-	serv := model.NewServiceProducts(db)
-	ctrl := controller.NewControllerProducts(serv)
+	db := repository.NewMeliDB()
+	serv := service.NewServiceProducts(&db)
+	ctrl := controller.NewControllerProducts(&serv)
 
 	rt := chi.NewRouter()
-
-	rt.Route("/products", func(r chi.Router) {
-		r.Post("/", ctrl.Create)
-		r.Get("/", ctrl.GetAll)
-		r.Get("/{id}", ctrl.GetById)
-		r.Get("/search", ctrl.Search)
-	})
+	routes.RegisterProductRoutes(rt, ctrl)
 
 	if err := http.ListenAndServe(":8080", rt); err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 }
